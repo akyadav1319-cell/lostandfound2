@@ -170,7 +170,13 @@ with col1:
     else:
         for item in lost_items:
             st.markdown(f"""
-                <div class="card">
+<div>
+    <h3>{item[1]}</h3>
+    <p>{item[2]}</p>
+    <span class="badge {badge}">Score: {score:.2f}</span>
+</div>
+""", unsafe_allow_html=True)
+
 
 
 
