@@ -1,264 +1,166 @@
 import streamlit as st
-from matcher import get_embedding
-from db import init_db, insert_item, fetch_all
+from model import get_embedding
+from database import init_db, insert_item, fetch_all
 import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
 import base64
 
-# ---------------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------------
-st.set_page_config(page_title="TIET Lost & Found", layout="wide")
-
+# ---- Page config ----
+st.set_page_config(page_title="Lost & Found AI", layout="wide")
 init_db()
+SIMILARITY_THRESHOLD = 0.65
 
-# ---------------------------------------------------------
-# GLOBAL CSS
-# ---------------------------------------------------------
+# ---- CSS ----
 st.markdown("""
 <style>
-
-body {
-    background: #fff7f7;
+/* Force app background to white */
+.stApp {
+    background-color: #fff !important;
+    color: #900000;
     font-family: 'Segoe UI', sans-serif;
 }
 
-.header {
-    display: flex;
-    align-items: center;
-    padding: 15px 0;
+/* Headings */
+h1, h2, h3 {
+    color: #900000;
 }
 
-.logo {
-    background:#8b0015;
-    color:white;
-    padding:10px 16px;
-    border-radius:12px;
-    font-weight:700;
-    font-size:18px;
-    margin-right:12px;
-}
-
-.title {
-    font-size:28px;
-    font-weight:600;
-    color:#8b0015;
-}
-
-.box-container {
-    display:flex;
-    justify-content:center;
-    margin-top:40px;
-    gap:50px;
-}
-
-.big-box {
-    width:350px;
-    height:220px;
-    border-radius:25px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    cursor:pointer;
-    font-size:28px;
-    font-weight:600;
-    transition:0.25s;
-    box-shadow:0 4px 20px rgba(0,0,0,0.15);
-}
-
-.big-box:hover {
-    transform:scale(1.03);
-}
-
-.red-box {
-    background: #ffe1e1;
-    color:#900000;
-}
-
-.green-box {
-    background:#e4ffee;
-    color:#065f28;
-}
-
-.modal {
-    background:white;
-    padding:30px;
-    border-radius:20px;
-    width:500px;
-    margin:auto;
-    box-shadow:0 5px 25px rgba(0,0,0,0.3);
-}
-
-input, textarea {
-    border-radius:10px !important;
-}
-
-.submit-btn {
-    width:100%;
-    padding:12px;
-    border-radius:12px;
-    font-size:18px;
-    font-weight:600;
-    color:white;
-    border:none;
-}
-
-.red-btn {
-    background:#d40000;
-}
-
-.green-btn {
-    background:#009944;
-}
-
+/* Card styling */
 .card {
-    background:white;
-    border-radius:18px;
-    padding:15px;
-    margin:10px;
-    box-shadow:0 4px 15px rgba(0,0,0,0.15);
+    background-color: white;
+    border-radius: 15px;
+    padding: 15px;
+    margin: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: scale(1.02);
 }
 
+/* Badge colors */
 .badge {
-    padding:6px 12px;
-    border-radius:10px;
-    color:white;
-    font-weight:600;
+    padding: 5px 10px;
+    border-radius: 12px;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}
+.high { background-color: #28a745; }  /* green */
+.medium { background-color: #ffc107; } /* yellow */
+.low { background-color: #dc3545; }    /* red */
+
+/* Image styling */
+.item-img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
 
-.high {background:#28a745;}
-.medium {background:#ffc107;color:black;}
-.low {background:#dc3545;}
-
+/* Grid container for cards */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-gap: 20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
+# ---- App title ----
+st.title("🔍 Lost & Found AI Matcher")
+st.write("Smart AI system connecting lost items with their rightful owners.")
 
-# ---------------------------------------------------------
-# HEADER
-# ---------------------------------------------------------
-st.markdown("""
-<div class="header">
-    <div class="logo">TI</div>
-    <div class="title">TIET Lost & Found</div>
-</div>
-""", unsafe_allow_html=True)
+# ---- Lost Item Submission ----
+with st.expander("📌 Report Lost Item", expanded=True):
+    name_lost = st.text_input("Item Name", key="lost_name")
+    desc_lost = st.text_area("Item Description", key="lost_desc")
+    image_lost = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"], key="lost_img")
 
-st.write("---")
+    if st.button("Submit Lost Item"):
+        if name_lost and desc_lost:
+            embed_lost = get_embedding(desc_lost)
+            insert_item("lost_items", name_lost, desc_lost, embed_lost)
+            st.success("Lost item reported successfully!")
 
-# ---------------------------------------------------------
-# BIG BUTTONS
-# ---------------------------------------------------------
+            # Auto-match
+            found_items = fetch_all("found_items")
+            if found_items:
+                st.write("### 🔎 AI Matching Results")
+                cols = st.columns(len(found_items))
+                for i, found in enumerate(found_items):
+                    lost_emb = np.array(embed_lost).reshape(1, -1)
+                    found_emb = np.array(json.loads(found[3])).reshape(1, -1)
+                    score = cosine_similarity(lost_emb, found_emb)[0][0]
 
-left, right = st.columns(2)
+                    # Determine badge color
+                    if score > 0.8:
+                        badge = 'high'
+                    elif score > 0.6:
+                        badge = 'medium'
+                    else:
+                        badge = 'low'
 
-with left:
-    lost_clicked = st.button("❓ Lost", key="lost_main_btn",
-                             help="Report a lost item",
-                             use_container_width=True)
+                    # Display card
+                    with cols[i % 3]:
+                        img_html = ""
+                        if image_lost:
+                            encoded = base64.b64encode(image_lost.getvalue()).decode()
+                            img_html = f'<img class="item-img" src="data:image/png;base64,{encoded}">'
+                        st.markdown(f"""
+                        <div class="card">
+                            {img_html}
+                            <h3>{found[1]}</h3>
+                            <p>{found[2]}</p>
+                            <span class="badge {badge}">Score: {score:.2f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-with right:
-    found_clicked = st.button("✔️ Found", key="found_main_btn",
-                              help="Report a found item",
-                              use_container_width=True)
+# ---- Found Item Submission ----
+with st.expander("📦 Report Found Item", expanded=True):
+    name_found = st.text_input("Found Item Name", key="found_name")
+    desc_found = st.text_area("Found Item Description", key="found_desc")
+    image_found = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"], key="found_img")
 
-# ---------------------------------------------------------
-# LOST ITEM MODAL
-# ---------------------------------------------------------
-if lost_clicked:
-    with st.container():
-        st.markdown('<div class="modal">', unsafe_allow_html=True)
+    if st.button("Submit Found Item"):
+        if name_found and desc_found:
+            embed_found = get_embedding(desc_found)
+            insert_item("found_items", name_found, desc_found, embed_found)
+            st.success("Found item submitted successfully!")
 
-        st.markdown("## Report Lost Item")
+            # Auto-match
+            lost_items = fetch_all("lost_items")
+            if lost_items:
+                st.write("### 🔎 AI Matching Results")
+                cols = st.columns(len(lost_items))
+                for i, lost in enumerate(lost_items):
+                    found_emb = np.array(embed_found).reshape(1, -1)
+                    lost_emb = np.array(json.loads(lost[3])).reshape(1, -1)
+                    score = cosine_similarity(lost_emb, found_emb)[0][0]
 
-        lost_name = st.text_input("Item Title", placeholder="e.g. Blue Casio Calculator")
-        lost_cat = st.selectbox("Category", ["Electronics", "Clothing", "Books", "Accessories"])
-        lost_loc = st.text_input("Location", placeholder="e.g. G-Block")
-        lost_desc = st.text_area("Description", placeholder="Provide details like color, brand, scratches…")
-        lost_img = st.file_uploader("Upload Image (optional)", type=["png", "jpg", "jpeg"])
+                    # Determine badge color
+                    if score > 0.8:
+                        badge = 'high'
+                    elif score > 0.6:
+                        badge = 'medium'
+                    else:
+                        badge = 'low'
 
-        if st.button("Post Lost Item", key="lost_submit_modal"):
-            if lost_name and lost_desc:
-                emb = get_embedding(lost_desc)
-                insert_item("lost_items", lost_name, lost_desc, emb)
-                st.success("Lost item posted!")
+                    with cols[i % 3]:
+                        img_html = ""
+                        if image_found:
+                            encoded = base64.b64encode(image_found.getvalue()).decode()
+                            img_html = f'<img class="item-img" src="data:image/png;base64,{encoded}">'
+                        st.markdown(f"""
+                        <div class="card">
+                            {img_html}
+                            <h3>{lost[1]}</h3>
+                            <p>{lost[2]}</p>
+                            <span class="badge {badge}">Score: {score:.2f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                # ---------- AUTO MATCH ----------
-                matches = fetch_all("found_items")
-                if matches:
-
-                    st.subheader("🔎 Matching Found Items")
-                    cols = st.columns(3)
-
-                    for i, row in enumerate(matches):
-                        found_emb = np.array(json.loads(row[3])).reshape(1, -1)
-                        score = cosine_similarity(
-                            np.array(emb).reshape(1, -1),
-                            found_emb
-                        )[0][0]
-
-                        badge = "high" if score > 0.8 else "medium" if score > 0.6 else "low"
-
-                        with cols[i % 3]:
-                            st.markdown(f"""
-                            <div class="card">
-                                <h4>{row[1]}</h4>
-                                <p>{row[2]}</p>
-                                <span class="badge {badge}">Score: {score:.2f}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# FOUND ITEM MODAL
-# ---------------------------------------------------------
-if found_clicked:
-    with st.container():
-        st.markdown('<div class="modal">', unsafe_allow_html=True)
-
-        st.markdown("## Report Found Item")
-
-        found_name = st.text_input("Found Item Title", placeholder="e.g. Black Hoodie")
-        found_cat = st.selectbox("Category", ["Electronics", "Clothing", "Books", "Accessories"])
-        found_loc = st.text_input("Location", placeholder="e.g. G-Block")
-        found_desc = st.text_area("Description", placeholder="Provide details like color, brand, scratches…")
-        found_img = st.file_uploader("Upload Image (optional)", type=["png", "jpg", "jpeg"])
-
-        if st.button("Post Found Item", key="found_submit_modal"):
-            if found_name and found_desc:
-                emb = get_embedding(found_desc)
-                insert_item("found_items", found_name, found_desc, emb)
-                st.success("Found item submitted!")
-
-                # ---------- AUTO MATCH ----------
-                matches = fetch_all("lost_items")
-                if matches:
-
-                    st.subheader("🔎 Matching Lost Items")
-                    cols = st.columns(3)
-
-                    for i, row in enumerate(matches):
-                        lost_emb = np.array(json.loads(row[3])).reshape(1, -1)
-                        score = cosine_similarity(
-                            np.array(emb).reshape(1, -1),
-                            lost_emb
-                        )[0][0]
-
-                        badge = "high" if score > 0.8 else "medium" if score > 0.6 else "low"
-
-                        with cols[i % 3]:
-                            st.markdown(f"""
-                            <div class="card">
-                                <h4>{row[1]}</h4>
-                                <p>{row[2]}</p>
-                                <span class="badge {badge}">Score: {score:.2f}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 
