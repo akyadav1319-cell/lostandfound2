@@ -8,6 +8,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 with open("lost_found.db", "rb") as f:
     st.download_button("Download Database", f, file_name="lost_found.db")
 
+import sqlite3
+import pandas as pd
+
+conn = sqlite3.connect("lost_found.db")  # your downloaded file
+df_lost = pd.read_sql_query("SELECT * FROM lost_items", conn)
+df_found = pd.read_sql_query("SELECT * FROM found_items", conn)
+
+print("Lost items:\n", df_lost)
+print("\nFound items:\n", df_found)
+
 # ---- Page config ----
 st.set_page_config(page_title="Lost & Found AI", layout="wide")
 init_db()
@@ -145,6 +155,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
