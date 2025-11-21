@@ -169,13 +169,20 @@ with col1:
         """, unsafe_allow_html=True)
     else:
         for item in lost_items:
+            # If you want to show badge/score, you need to calculate it (currently badge, score not defined)
+            # If you just want to show items:
             st.markdown(f"""
-<div>
-    <h3>{item[1]}</h3>
-    <p>{item[2]}</p>
-    <span class="badge {badge}">Score: {score:.2f}</span>
-</div>
-""", unsafe_allow_html=True)
+                <div class="card">
+                    <h3 style="font-weight:700;">{item[1]}</h3>
+                    <p style='margin-top:5px;'>{item[2]}</p>
+                </div>
+            """, unsafe_allow_html=True)
+        # Show the "+'' button
+        st.markdown(f"""
+            <button class="fab" onclick="window.location.href='#lost-form'">+</button>
+        """, unsafe_allow_html=True)
+
+
 
 
 
