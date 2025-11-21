@@ -1,62 +1,69 @@
 import streamlit as st
-from matcher import get_embedding
-from db import init_db, insert_item, fetch_all
+from model import get_embedding
+from database import init_db, insert_item, fetch_all
 import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(page_title="Lost & Found AI", layout="centered")
-st.title("🔍 Lost & Found AI System")
+st.title("🔍 Lost & Found AI Matcher")
 
 init_db()
 
-st.write("A smart system that connects lost items with founders using AI similarity scoring.")
+SIMILARITY_THRESHOLD = 0.65
 
+# ---- Report Lost Item ----
 with st.expander("📌 Report Lost Item"):
-    name = st.text_input("Item Name")
-    desc = st.text_area("Describe the Item")
+    name_lost = st.text_input("Item Name", key="lost_name")
+    desc_lost = st.text_area("Item Description", key="lost_desc")
 
     if st.button("Submit Lost Item"):
-        if name and desc:
-            embed = get_embedding(desc)
-            insert_item("lost_items", name, desc, embed)
+        if name_lost and desc_lost:
+            embed_lost = get_embedding(desc_lost)
+            insert_item("lost_items", name_lost, desc_lost, embed_lost)
             st.success("Lost item reported successfully!")
 
-with st.expander("📦 Report Found Item"):
-    name2 = st.text_input("Found Item Name")
-    desc2 = st.text_area("Describe the Found Item")
-
-    if st.button("Submit Found Item"):
-        if name2 and desc2:
-            embed2 = get_embedding(desc2)
-            insert_item("found_items", name2, desc2, embed2)
-            st.success("Found item submitted successfully!")
-
-with st.expander("🎯 AI Match Finder"):
-    lost_items = fetch_all("lost_items")
-    found_items = fetch_all("found_items")
-
-    if st.button("Run Matching"):
-        if not lost_items or not found_items:
-            st.warning("Need lost and found item entries first!")
-        else:
-            for lost in lost_items:
-                lost_emb = np.array(json.loads(lost[3])).reshape(1, -1)
-                best_match = None
-                best_score = 0
-
+            # Auto-match with found items
+            found_items = fetch_all("found_items")
+            if not found_items:
+                st.info("No found items in database yet.")
+            else:
+                st.write("### 🔎 AI Matching Results")
                 for found in found_items:
+                    lost_emb = np.array(embed_lost).reshape(1, -1)
                     found_emb = np.array(json.loads(found[3])).reshape(1, -1)
                     score = cosine_similarity(lost_emb, found_emb)[0][0]
+                    if score > SIMILARITY_THRESHOLD:
+                        st.success(f"Match Found! Lost: **{name_lost}** → Found: **{found[1]}** (Score: {score:.2f})")
+                    else:
+                        st.write(f"No match for Lost: **{name_lost}** with Found: **{found[1]}** yet.")
 
-                    if score > best_score:
-                        best_match = found
-                        best_score = score
-                
-                if best_score > 0.65:
-                    st.success(f"Match Found! 🎉\nLost: **{lost[1]}** → Found: **{best_match[1]}** (Score: `{best_score:.2f}`)")
-                else:
-                    st.write(f"No valid match found yet for: **{lost[1]}**")
+
+# ---- Report Found Item ----
+with st.expander("📦 Report Found Item"):
+    name_found = st.text_input("Found Item Name", key="found_name")
+    desc_found = st.text_area("Found Item Description", key="found_desc")
+
+    if st.button("Submit Found Item"):
+        if name_found and desc_found:
+            embed_found = get_embedding(desc_found)
+            insert_item("found_items", name_found, desc_found, embed_found)
+            st.success("Found item submitted successfully!")
+
+            # Auto-match with lost items
+            lost_items = fetch_all("lost_items")
+            if not lost_items:
+                st.info("No lost items in database yet.")
+            else:
+                st.write("### 🔎 AI Matching Results")
+                for lost in lost_items:
+                    found_emb = np.array(embed_found).reshape(1, -1)
+                    lost_emb = np.array(json.loads(lost[3])).reshape(1, -1)
+                    score = cosine_similarity(lost_emb, found_emb)[0][0]
+                    if score > SIMILARITY_THRESHOLD:
+                        st.success(f"Match Found! Lost: **{lost[1]}** → Found: **{name_found}** (Score: {score:.2f})")
+                    else:
+                        st.write(f"No match for Found: **{name_found}** with Lost: **{lost[1]}** yet.")
 
 
 
