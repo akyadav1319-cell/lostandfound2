@@ -1,6 +1,6 @@
 import streamlit as st
-from model import get_embedding
-from database import init_db, insert_item, fetch_all
+from matcher import get_embedding
+from db import init_db, insert_item, fetch_all
 import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
@@ -160,6 +160,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
