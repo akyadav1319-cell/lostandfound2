@@ -36,8 +36,8 @@ h2 {
 st.title("🔍 Lost & Found Portal")
 
 # ---- Fetch items from DB ----
-lost_items = get_lost_items()
-found_items = get_found_items()
+lost_items =init_db()
+found_items = insert_item()
 
 # ---- Columns for Lost and Found ----
 col1, col2 = st.columns(2)
@@ -100,6 +100,7 @@ with col2:
             <p>Date: {item['date']}</p>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
