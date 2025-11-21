@@ -2,8 +2,8 @@ import streamlit as st
 import json
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from database import init_db, insert_item, fetch_all
-from model import get_embedding
+from db import init_db, insert_item, fetch_all
+from matcher import get_embedding
 
 # ----- Setup -----
 st.set_page_config(page_title="Lost & Found AI", layout="wide")
@@ -100,6 +100,7 @@ if lost_items and found_items:
             """, unsafe_allow_html=True)
 else:
     st.info("No lost or found items available yet.")
+
 
 
 
