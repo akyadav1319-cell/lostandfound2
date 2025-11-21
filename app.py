@@ -47,10 +47,6 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-if st.button("Toggle Theme"):
-    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
-    st.experimental_rerun()
-
 # --- FETCH DATA FROM DATABASE ---
 # lost_items = get_lost_items()
 # found_items = get_found_items()
@@ -132,6 +128,7 @@ if st.session_state.show_found_modal:
             st.success("Found item submitted successfully!")
             st.session_state.show_found_modal = False
             st.experimental_rerun()
+
 
 
 
