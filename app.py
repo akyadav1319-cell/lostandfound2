@@ -1,105 +1,101 @@
 import streamlit as st
-import json
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from db import init_db, insert_item, fetch_all
 from matcher import get_embedding
+from db import init_db, insert_item, fetch_all
+import numpy as np
+import json
+from sklearn.metrics.pairwise import cosine_similarity
+import base64
 
-st.set_page_config(page_title="Lost & Found Portal", layout="wide")
+# ---- Page config ----
+st.set_page_config(page_title="Lost & Found AI", layout="wide")
+init_db()
 
-# ---- CSS for dark theme + gradients ----
+# ---- CSS ----
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #1e293b, #4c1d95, #1e293b);
-    color: white;
-}
-.card {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 15px;
-    border-radius: 15px;
-    margin-bottom: 10px;
-    transition: transform 0.2s;
-}
-.card:hover {
-    transform: scale(1.02);
-}
-button {
-    cursor: pointer;
-}
-h2 {
-    margin-bottom: 10px;
-}
+body {background-color: #fffafa; font-family: 'Segoe UI', sans-serif; color: #900000;}
+h1, h2, h3 {color: #900000;}
+.card {background-color: white; border-radius: 15px; padding: 15px; margin: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: transform 0.2s;}
+.card:hover {transform: scale(1.02);}
+.badge {padding: 5px 10px; border-radius: 12px; color: white; font-weight: bold; font-size: 14px;}
+.high { background-color: #28a745; }  
+.medium { background-color: #ffc107; } 
+.low { background-color: #dc3545; }    
+.item-img {width: 100%; height: auto; border-radius: 10px; margin-bottom: 10px;}
+.grid-container {display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); grid-gap: 20px;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🔍 Lost & Found Portal")
+st.title("🔍 Lost & Found AI Matcher")
+st.write("Smart AI system connecting lost items with their rightful owners.")
 
-# ---- Fetch items from DB ----
-lost_items =init_db()
-found_items = insert_item()
+# ---- Lost Item Submission ----
+with st.expander("📌 Report Lost Item", expanded=True):
+    lost_name = st.text_input("Item Name", key="lost_name_input")
+    lost_desc = st.text_area("Item Description", key="lost_desc_input")
+    lost_image = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"], key="lost_image_input")
 
-# ---- Columns for Lost and Found ----
-col1, col2 = st.columns(2)
+    if st.button("Submit Lost Item", key="lost_submit"):
+        if lost_name and lost_desc:
+            embed_lost = get_embedding(lost_desc)
+            insert_item("lost_items", lost_name, lost_desc, embed_lost)
+            st.success("Lost item reported successfully!")
 
-# ----- LOST ITEMS -----
-with col1:
-    st.subheader("😢 Lost Items")
-    with st.form("lost_form"):
-        lost_name = st.text_input("Item Name")
-        lost_type = st.selectbox("Object Type", ["Laptop","Mobile","Charger","Bags","Water Bottle","Books","ID Card","Keys","Wallet","Headphones","Watch","Umbrella","Others"])
-        lost_location = st.text_input("Last Seen Location")
-        lost_description = st.text_area("Description")
-        lost_contact = st.text_input("Contact Info")
-        submit_lost = st.form_submit_button("Report Lost Item")
-        if submit_lost:
-            if not lost_name or not lost_type or not lost_location or not lost_contact:
-                st.warning("Please fill in all required fields")
-            else:
-                insert_lost_item(lost_name, lost_type, lost_location, lost_description, lost_contact, datetime.now())
-                st.success("Lost item reported successfully!")
-                st.experimental_rerun()
-    st.markdown("---")
-    for item in lost_items:
-        st.markdown(f"""
-        <div class="card">
-            <h4>{item['name']}</h4>
-            <p>Type: {item['type']}</p>
-            <p>Location: {item['location']}</p>
-            <p>Date: {item['date']}</p>
-            <p>Status: {item['status']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+            # Auto-match
+            found_items = fetch_all("found_items")
+            if found_items:
+                st.write("### 🔎 AI Matching Results")
+                cols = st.columns(min(3, len(found_items)))
+                for i, found in enumerate(found_items):
+                    lost_emb = np.array(embed_lost).reshape(1, -1)
+                    found_emb = np.array(json.loads(found[3])).reshape(1, -1)
+                    score = cosine_similarity(lost_emb, found_emb)[0][0]
 
-# ----- FOUND ITEMS -----
-with col2:
-    st.subheader("🎉 Found Items")
-    with st.form("found_form"):
-        found_name = st.text_input("Item Name", key="found_name")
-        found_type = st.selectbox("Object Type", ["Laptop","Mobile","Charger","Bags","Water Bottle","Books","ID Card","Keys","Wallet","Headphones","Watch","Umbrella","Others"], key="found_type")
-        found_location = st.text_input("Found Location", key="found_location")
-        found_description = st.text_area("Description", key="found_description")
-        found_contact = st.text_input("Contact Info", key="found_contact")
-        submit_found = st.form_submit_button("Report Found Item")
-        if submit_found:
-            if not found_name or not found_type or not found_location or not found_contact:
-                st.warning("Please fill in all required fields")
-            else:
-                # Optionally, use AI verification
-                verified = verify_owner(found_description, found_contact)  # replace with your AI logic
-                insert_found_item(found_name, found_type, found_location, found_description, found_contact, datetime.now(), verified)
-                st.success("Found item reported successfully!")
-                st.experimental_rerun()
-    st.markdown("---")
-    for item in found_items:
-        st.markdown(f"""
-        <div class="card">
-            <h4>{item['name']}</h4>
-            <p>Type: {item['type']}</p>
-            <p>Location: {item['location']}</p>
-            <p>Date: {item['date']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+                    badge = 'high' if score > 0.8 else 'medium' if score > 0.6 else 'low'
+                    img_html = f'<img class="item-img" src="data:image/png;base64,{base64.b64encode(lost_image.getvalue()).decode("utf-8")}">' if lost_image else ""
+                    
+                    with cols[i % 3]:
+                        st.markdown(f"""
+                        <div class="card">{img_html}
+                            <h3>{found[1]}</h3>
+                            <p>{found[2]}</p>
+                            <span class="badge {badge}">Score: {score:.2f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+# ---- Found Item Submission ----
+with st.expander("📦 Report Found Item", expanded=True):
+    found_name = st.text_input("Found Item Name", key="found_name_input")
+    found_desc = st.text_area("Found Item Description", key="found_desc_input")
+    found_image = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"], key="found_image_input")
+
+    if st.button("Submit Found Item", key="found_submit"):
+        if found_name and found_desc:
+            embed_found = get_embedding(found_desc)
+            insert_item("found_items", found_name, found_desc, embed_found)
+            st.success("Found item submitted successfully!")
+
+            # Auto-match
+            lost_items = fetch_all("lost_items")
+            if lost_items:
+                st.write("### 🔎 AI Matching Results")
+                cols = st.columns(min(3, len(lost_items)))
+                for i, lost in enumerate(lost_items):
+                    found_emb = np.array(embed_found).reshape(1, -1)
+                    lost_emb = np.array(json.loads(lost[3])).reshape(1, -1)
+                    score = cosine_similarity(lost_emb, found_emb)[0][0]
+
+                    badge = 'high' if score > 0.8 else 'medium' if score > 0.6 else 'low'
+                    img_html = f'<img class="item-img" src="data:image/png;base64,{base64.b64encode(found_image.getvalue()).decode("utf-8")}">' if found_image else ""
+                    
+                    with cols[i % 3]:
+                        st.markdown(f"""
+                        <div class="card">{img_html}
+                            <h3>{lost[1]}</h3>
+                            <p>{lost[2]}</p>
+                            <span class="badge {badge}">Score: {score:.2f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
 
 
