@@ -1,6 +1,6 @@
 import streamlit as st
 from matcher import get_embedding
-from database import init_db, insert_item, fetch_all
+from db import init_db, insert_item, fetch_all
 import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
@@ -57,6 +57,7 @@ with st.expander("🎯 AI Match Finder"):
                     st.success(f"Match Found! 🎉\nLost: **{lost[1]}** → Found: **{best_match[1]}** (Score: `{best_score:.2f}`)")
                 else:
                     st.write(f"No valid match found yet for: **{lost[1]}**")
+
 
 
 
