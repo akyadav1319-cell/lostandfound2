@@ -2,8 +2,8 @@ import streamlit as st
 import json
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from database import init_db, insert_item, fetch_all
-from model import get_embedding
+from db import init_db, insert_item, fetch_all
+from matcher import get_embedding
 
 st.set_page_config(page_title="Lost & Found Portal", layout="wide")
 
@@ -100,6 +100,7 @@ with col2:
             <p>Date: {item['date']}</p>
         </div>
         """, unsafe_allow_html=True)
+
 
 
 
