@@ -4,7 +4,7 @@ from db import init_db, insert_item, fetch_all
 import numpy as np
 import json
 import pandas as pd
-from database import fetch_all
+from db import fetch_all
 
 lost_items = fetch_all("lost_items")
 found_items = fetch_all("found_items")
@@ -176,6 +176,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
