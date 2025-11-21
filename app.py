@@ -8,13 +8,6 @@ import time
 with st.spinner("AI is analyzing and matching... 🧠"):
     time.sleep(2)  # simulate AI computation
 st.success("AI Matching Complete!")
-import time
-
-progress = st.progress(0)
-for i in range(1, 101):
-    time.sleep(0.01)
-    progress.progress(i)
-st.success("AI Matching Complete!")
 
 # ---- Page config ----
 st.set_page_config(page_title="Lost & Found AI", layout="wide")
@@ -175,6 +168,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
