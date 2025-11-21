@@ -4,10 +4,11 @@ from db import init_db, insert_item, fetch_all
 import numpy as np
 import json
 import pandas as pd
-from db import fetch_all
 
-lost_items = fetch_all("lost_items")
-found_items = fetch_all("found_items")
+
+with open("lostfound.db", "rb") as f:
+    st.download_button("Download Database", f, file_name="lostfound.db")
+
 
 st.dataframe(pd.DataFrame(lost_items, columns=["ID","Name","Description"]))
 st.dataframe(pd.DataFrame(found_items, columns=["ID","Name","Description"]))
@@ -176,6 +177,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
