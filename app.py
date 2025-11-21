@@ -49,7 +49,7 @@ with st.expander("Report Lost Item"):
     lost_name = st.text_input("Item Name")
     lost_type = st.selectbox("Item Type", ["Laptop","Mobile","Bags","Books","Wallet","Keys","Others"])
     lost_location = st.text_input("Last Seen Location")
-    lost_desc = st.text_area("Description")
+    lost_desc = st.text_area("Description",key="lost_dec")
     lost_contact = st.text_input("Contact Info")
     
     if st.button("Submit Lost Item"):
@@ -63,7 +63,7 @@ with st.expander("Report Found Item"):
     found_name = st.text_input("Found Item Name")
     found_type = st.selectbox("Item Type Found", ["Laptop","Mobile","Bags","Books","Wallet","Keys","Others"])
     found_location = st.text_input("Found Location")
-    found_desc = st.text_area("Description")
+    found_desc = st.text_area("Description",key="found_name")
     found_contact = st.text_input("Contact Info")
     
     if st.button("Submit Found Item"):
@@ -100,6 +100,7 @@ if lost_items and found_items:
             """, unsafe_allow_html=True)
 else:
     st.info("No lost or found items available yet.")
+
 
 
 
