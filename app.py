@@ -1,5 +1,5 @@
 import streamlit as st
-from model import get_embedding
+from matcher import get_embedding
 from database import init_db, insert_item, fetch_all
 import numpy as np
 import json
@@ -57,5 +57,6 @@ with st.expander("🎯 AI Match Finder"):
                     st.success(f"Match Found! 🎉\nLost: **{lost[1]}** → Found: **{best_match[1]}** (Score: `{best_score:.2f}`)")
                 else:
                     st.write(f"No valid match found yet for: **{lost[1]}**")
+
 
 
