@@ -5,6 +5,9 @@ import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
 
+with open("lost_found.db", "rb") as f:
+    st.download_button("Download Database", f, file_name="lost_found.db")
+
 # ---- Page config ----
 st.set_page_config(page_title="Lost & Found AI", layout="wide")
 init_db()
@@ -142,6 +145,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
