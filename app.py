@@ -1,155 +1,144 @@
 import streamlit as st
-from matcher import get_embedding
-from db import init_db, insert_item, fetch_all
-import numpy as np
 import json
+import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+from db import init_db, insert_item, fetch_all
+from matcher import get_embedding
+from datetime import datetime
+# --- IMPORT YOUR AI AND DATABASE FUNCTIONS HERE ---
+# from ai_module import process_item_description
+# from db_module import add_lost_item, add_found_item, get_lost_items, get_found_items
 
-# ---- Page config ----
-st.set_page_config(page_title="Lost & Found AI", layout="wide")
-init_db()
-SIMILARITY_THRESHOLD = 0.65
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Lost & Found Portal", layout="wide")
 
-# ---- Modern Thapar/Portal CSS ----
-st.markdown("""
-<style>
-body {
-    background: radial-gradient(circle, #25253a 60%, #181820 100%);
-    font-family: 'Segoe UI', sans-serif;
-}
-.header {
-    display:flex;align-items:center;gap:20px;padding:20px 0 10px 0;margin-bottom:10px;
-}
-.logo {background:#C91120;color:#fff;font-weight:700;font-size:1.1rem;border-radius:50%;
-       width:52px;height:52px;display:flex;justify-content:center;align-items:center;margin-right:15px;
-       box-shadow:0 2px 8px rgba(0,0,0,0.08);}
-.title-block h1 {color:#fff;font-size:2.2rem;font-weight:800;margin-bottom:3px;}
-.title-block .subtitle {color:#b9b9d9;font-size:1.07rem;margin-top:-5px;}
-.top-actions {margin-left:auto;display:flex;gap:15px;}
-.icon-btn {background:#222;color:#fff;border-radius:100%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
-           font-size:1.2rem;box-shadow:0 1px 6px rgba(0,0,0,0.07);cursor:pointer;border:none;}
-.section-title {color:#fff;font-size:1.8rem;font-weight:bold;margin-bottom:16px;margin-top:22px;}
-.card-slot {background:#232336;border-radius:15px;box-shadow:0 2px 20px rgba(60,0,0,0.13);
-            padding:38px 25px 38px 25px;margin-bottom:30px;min-height:72px;
-            display:flex;align-items:center;justify-content:center;position:relative;}
-.fab {position:absolute;right:30px;top:50%;transform:translateY(-50%);
-      width:46px;height:46px;background:#C91120;color:#fff;border:none;border-radius:50%;
-      font-size:2.1rem;box-shadow:0 2px 8px rgba(201,17,32,0.11);
-      display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s;z-index:1;}
-.fab:hover {background:#FF3B43;}
-.card {background:#262641;border-radius:14px;padding:22px 19px 17px 19px;margin-bottom:16px;color:#fff;
-       box-shadow:0 4px 15px rgba(0,0,0,0.09);transition:transform 0.2s;}
-.card:hover, .card:focus {transform:scale(1.018);}
-.badge {padding:5px 12px;border-radius:12px;color:white;font-weight:600;font-size:14px;margin-top:6px;display:inline-block;}
-.high {background-color:#28a745;}
-.medium {background-color:#ffc107;color:#333;}
-.low {background-color:#dc3545;}
-.item-img {width:100%;height:auto;border-radius:10px;margin-bottom:10px;}
-</style>
-""", unsafe_allow_html=True)
+# --- SESSION STATE FOR THEMES AND MODALS ---
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+if "show_lost_modal" not in st.session_state:
+    st.session_state.show_lost_modal = False
+if "show_found_modal" not in st.session_state:
+    st.session_state.show_found_modal = False
 
-# ---- Top Bar ----
-st.markdown("""
-<div class="header">
-    <div class="logo">TU</div>
-    <div class="title-block">
-        <h1>LOST and FOUND</h1>
-        <div class="subtitle">Thapar University Portal</div>
-    </div>
-    <div class="top-actions">
-        <div style="background:#333;color:#fff;border-radius:8px;padding:7px 24px;">abist_be25</div>
-        <button class="icon-btn" title="Notifications"><span style="font-size:1.25rem;">🔔</span></button>
-        <button class="icon-btn" title="Settings"><span style="font-size:1.15rem;">⚙️</span></button>
-        <button class="icon-btn" title="Logout"><span style="font-size:1.1rem;">⤴️</span></button>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ---- Show the forms on "+", using Streamlit session state ----
-if "show_lost_form" not in st.session_state:
-    st.session_state.show_lost_form = False
-if "show_found_form" not in st.session_state:
-    st.session_state.show_found_form = False
-
-lost_items = fetch_all("lost_items")
-found_items = fetch_all("found_items")
-
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown(f'<div class="section-title">Lost Items</div>', unsafe_allow_html=True)
-    if st.button("+", key='open_lost'):
-        st.session_state.show_lost_form = True
-    if not lost_items:
-        st.markdown("""
-            <div class="card-slot">
-                <div style="width:100%;text-align:center;font-size:1.2rem;color:#d9d9e7;">
-                No lost items yet
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+# --- THEME COLORS ---
+def theme_colors():
+    if st.session_state.theme == "dark":
+        return {
+            "bg": "#1e1e2f",
+            "card_bg": "rgba(255,255,255,0.05)",
+            "text": "#ffffff",
+            "button": "linear-gradient(90deg, #f87171, #ec4899)"
+        }
     else:
-        for item in lost_items:
-            st.markdown(f"""
-                <div class="card">
-                    <h3 style="font-weight:700;">{item[1]}</h3>
-                    <p style='margin-top:5px;'>{item[2]}</p>
-                </div>
-            """, unsafe_allow_html=True)
+        return {
+            "bg": "#f8fafc",
+            "card_bg": "rgba(255,255,255,0.8)",
+            "text": "#1f2937",
+            "button": "linear-gradient(90deg, #34d399, #10b981)"
+        }
+
+colors = theme_colors()
+
+# --- HEADER ---
+st.markdown(
+    f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="color:{colors['text']};">🔍 Lost & Found Portal</h1>
+        <button onclick="window.location.reload();" style="padding:8px 16px; border:none; border-radius:8px; cursor:pointer;">
+            Toggle Theme
+        </button>
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# Theme toggle button using Streamlit
+if st.button("Toggle Theme", key="theme_toggle"):
+    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+    st.experimental_rerun()
+
+# --- FETCH DATA FROM DATABASE ---
+# Replace with your database fetch functions
+# lost_items = get_lost_items()
+# found_items = get_found_items()
+
+# For demo purposes:
+lost_items = [
+    {"id":1,"name":"Blue Backpack","type":"Bags","location":"Library","date":"2024-11-20","status":"lost"},
+    {"id":2,"name":"iPhone 13","type":"Mobile","location":"Cafeteria","date":"2024-11-19","status":"found"}
+]
+found_items = [
+    {"id":3,"name":"MacBook Pro","type":"Laptop","location":"Lab 201","date":"2024-11-21"},
+    {"id":4,"name":"Black Wallet","type":"Others","location":"Gym","date":"2024-11-20"}
+]
+
+# --- LOST & FOUND SECTIONS ---
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown(f"<h2 style='color:{colors['text']}'>😢 Lost Items</h2>", unsafe_allow_html=True)
+    if st.button("+ Report Lost Item", key="lost_modal_button"):
+        st.session_state.show_lost_modal = True
+
+    for item in lost_items:
+        st.markdown(
+            f"""
+            <div style='background:{colors['card_bg']}; padding:15px; border-radius:12px; margin-bottom:10px;'>
+                <b style='color:{colors['text']}'>{item['name']}</b><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Type: {item['type']}</small><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Location: {item['location']}</small><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Date: {item['date']}</small><br>
+                {"<span style='color:#34d399;'>Found! ✨</span>" if item['status']=="found" else ""}
+            </div>
+            """, unsafe_allow_html=True
+        )
 
 with col2:
-    st.markdown(f'<div class="section-title">Found Items</div>', unsafe_allow_html=True)
-    if st.button("+", key='open_found'):
-        st.session_state.show_found_form = True
-    if not found_items:
-        st.markdown("""
-            <div class="card-slot">
-                <div style="width:100%;text-align:center;font-size:1.2rem;color:#d9d9e7;">
-                No found items yet
-                </div>
+    st.markdown(f"<h2 style='color:{colors['text']}'>🎉 Found Items</h2>", unsafe_allow_html=True)
+    if st.button("+ Report Found Item", key="found_modal_button"):
+        st.session_state.show_found_modal = True
+
+    for item in found_items:
+        st.markdown(
+            f"""
+            <div style='background:{colors['card_bg']}; padding:15px; border-radius:12px; margin-bottom:10px;'>
+                <b style='color:{colors['text']}'>{item['name']}</b><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Type: {item['type']}</small><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Location: {item['location']}</small><br>
+                <small style='color:{colors['text']}; opacity:0.7'>Date: {item['date']}</small><br>
             </div>
-        """, unsafe_allow_html=True)
-    else:
-        for item in found_items:
-            st.markdown(f"""
-                <div class="card">
-                    <h3 style="font-weight:700;">{item[1]}</h3>
-                    <p style='margin-top:5px;'>{item[2]}</p>
-                </div>
-            """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True
+        )
 
+# --- MODALS USING EXPANDERS ---
+if st.session_state.show_lost_modal:
+    with st.expander("Report Lost Item", expanded=True):
+        name = st.text_input("Item Name")
+        type_ = st.selectbox("Type", ["Laptop","Mobile","Charger","Bags","Water Bottle","Books","ID Card","Keys","Wallet","Headphones","Watch","Umbrella","Others"])
+        location = st.text_input("Last Seen Location")
+        description = st.text_area("Description")
+        contact = st.text_input("Contact Info")
+        if st.button("Submit Lost Item"):
+            # --- CALL YOUR DATABASE + AI HERE ---
+            # add_lost_item(name, type_, location, description, contact)
+            # ai_result = process_item_description(description)
+            st.success("Lost item submitted successfully!")
+            st.session_state.show_lost_modal = False
+            st.experimental_rerun()
 
-# ---- Lost Item Submission Form ----
-if st.session_state.show_lost_form:
-    with st.form("lost_form"):
-        st.markdown("<h3 style='color:#C91120;'>Report Lost Item</h3>", unsafe_allow_html=True)
-        name_lost = st.text_input("Item Name")
-        desc_lost = st.text_area("Description")
-        image_lost = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"])
-        submitted = st.form_submit_button("Submit Lost Item")
-        if submitted:
-            if name_lost and desc_lost:
-                embed_lost = get_embedding(desc_lost)
-                insert_item("lost_items", name_lost, desc_lost, embed_lost)
-                st.success("Lost item reported successfully!")
-                st.session_state.show_lost_form = False
-                st.rerun()
-
-# ---- Found Item Submission Form ----
-if st.session_state.show_found_form:
-    with st.form("found_form"):
-        st.markdown("<h3 style='color:#C91120;'>Report Found Item</h3>", unsafe_allow_html=True)
-        name_found = st.text_input("Found Item Name")
-        desc_found = st.text_area("Description")
-        image_found = st.file_uploader("Upload an image (optional)", type=["png","jpg","jpeg"])
-        submitted = st.form_submit_button("Submit Found Item")
-        if submitted:
-            if name_found and desc_found:
-                embed_found = get_embedding(desc_found)
-                insert_item("found_items", name_found, desc_found, embed_found)
-                st.success("Found item submitted successfully!")
-                st.session_state.show_found_form = False
-                st.rerun()
-
+if st.session_state.show_found_modal:
+    with st.expander("Report Found Item", expanded=True):
+        name = st.text_input("Item Name", key="found_name")
+        type_ = st.selectbox("Type", ["Laptop","Mobile","Charger","Bags","Water Bottle","Books","ID Card","Keys","Wallet","Headphones","Watch","Umbrella","Others"], key="found_type")
+        location = st.text_input("Found Location", key="found_loc")
+        description = st.text_area("Description", key="found_desc")
+        contact = st.text_input("Contact Info", key="found_contact")
+        if st.button("Submit Found Item", key="submit_found"):
+            # --- CALL YOUR DATABASE + AI HERE ---
+            # add_found_item(name, type_, location, description, contact)
+            # ai_result = process_item_description(description)
+            st.success("Found item submitted successfully!")
+            st.session_state.show_found_modal = False
+            st.experimental_rerun()
 
 
 
