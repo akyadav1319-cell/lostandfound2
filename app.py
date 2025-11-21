@@ -1,53 +1,18 @@
 import streamlit as st
-from matcher import get_embedding
-from db import init_db, insert_item, fetch_all
+from model import get_embedding
+from database import init_db, insert_item, fetch_all
 import numpy as np
 import json
-import pandas as pd
-
-
-with open("lost_found.db", "rb") as f:
-    st.download_button("Download Database", f, file_name="lostfound.db")
-
-
-st.dataframe(pd.DataFrame(lost_items, columns=["ID","Name","Description"]))
-st.dataframe(pd.DataFrame(found_items, columns=["ID","Name","Description"]))
 from sklearn.metrics.pairwise import cosine_similarity
-import time
-with st.spinner("AI is analyzing and matching... 🧠"):
-    time.sleep(2)  # simulate AI computation
-st.success("AI Matching Complete!")
 
 # ---- Page config ----
 st.set_page_config(page_title="Lost & Found AI", layout="wide")
 init_db()
 SIMILARITY_THRESHOLD = 0.65
 
-
-
 # ---- Modern red & white CSS ----
 st.markdown("""
 <style>
-/* Fade-in + slide-up animation */
-.card {
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.5s forwards;
-}
-
-.card:nth-child(1) { animation-delay: 0.1s; }
-.card:nth-child(2) { animation-delay: 0.2s; }
-.card:nth-child(3) { animation-delay: 0.3s; }
-.card:nth-child(4) { animation-delay: 0.4s; }
-/* add more nth-child if needed */
-
-@keyframes fadeInUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 body {
     background-color: #fffafa;
     font-family: 'Segoe UI', sans-serif;
@@ -177,20 +142,6 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
