@@ -5,8 +5,25 @@ import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
 
-with open("lost_found.db", "rb") as f:
-    st.download_button("Download Database", f, file_name="lost_found.db")
+import pandas as pd
+from db import fetch_all  # your SQLite helper
+
+st.header("📂 View Stored Items")
+
+# Fetch data from your tables
+lost_items = fetch_all("lost_items")
+found_items = fetch_all("found_items")
+
+# Convert to DataFrame for nice display
+lost_df = pd.DataFrame(lost_items, columns=["ID","Name","Description","Embedding"])
+found_df = pd.DataFrame(found_items, columns=["ID","Name","Description","Embedding"])
+
+# Show tables without embeddings
+st.subheader("Lost Items")
+st.dataframe(lost_df[["ID","Name","Description"]])
+
+st.subheader("Found Items")
+st.dataframe(found_df[["ID","Name","Description"]])
 
 import sqlite3
 import pandas as pd
@@ -155,6 +172,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                             <span class="badge {badge}">Score: {score:.2f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+
 
 
 
