@@ -1,8 +1,6 @@
 import streamlit as st
 from matcher import get_embedding
-from db importimport streamlit as st
-from model import get_embedding
-from database import init_db, insert_item, fetch_all
+from db import init_db, insert_item, fetch_all
 import numpy as np
 import json
 from sklearn.metrics.pairwise import cosine_similarity
@@ -102,6 +100,7 @@ with st.expander("📦 Report Found Item", expanded=True):
                         st.success(f"Match Found! Lost: **{lost[1]}** → Found: **{name_found}** (Score: {score:.2f})")
                     else:
                         st.write(f"No match for Found: **{name_found}** with Lost: **{lost[1]}** yet.")
+
 
 
 
